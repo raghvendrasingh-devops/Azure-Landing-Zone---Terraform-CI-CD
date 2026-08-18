@@ -2,21 +2,25 @@ name: Azure Landing Zone - Terraform CI/CD
 
 on:
 
-  # ==========================================
-  # FEATURE BRANCH
-  # ==========================================
+  # =====================================================
+  # FEATURE BRANCH PUSH
+  # Runs validation only
+  # =====================================================
   push:
     branches:
       - 'feature/**'
 
-  # ==========================================
-  # PULL REQUEST → MAIN
-  # ==========================================
+  # =====================================================
+  # PULL REQUEST TO MAIN
+  # Runs validation only
+  # =====================================================
   pull_request:
     branches:
       - main
 
-  # Manual trigger
+  # =====================================================
+  # MANUAL TRIGGER
+  # =====================================================
   workflow_dispatch:
 
 
@@ -24,9 +28,12 @@ jobs:
 
   # =====================================================
   # CI - TERRAFORM VALIDATION
+  #
   # Runs on:
   # 1. Feature branch push
-  # 2. Pull request to main
+  # 2. Pull request targeting main
+  #
+  # Does NOT run terraform apply
   # =====================================================
 
   terraform-validation:
@@ -41,38 +48,53 @@ jobs:
 
     defaults:
       run:
-        working-directory: terraform
+        working-directory: environment/dev
 
     steps:
 
+      # -------------------------------------------------
       # Checkout repository
+      # -------------------------------------------------
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      # -------------------------------------------------
       # Install Terraform
+      # -------------------------------------------------
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
+      # -------------------------------------------------
       # Initialize Terraform
+      # -------------------------------------------------
       - name: Terraform Init
         run: terraform init
 
-      # Check formatting
+      # -------------------------------------------------
+      # Check Terraform formatting
+      # -------------------------------------------------
       - name: Terraform Format Check
         run: terraform fmt -check -recursive
 
-      # Validate configuration
+      # -------------------------------------------------
+      # Validate Terraform configuration
+      # -------------------------------------------------
       - name: Terraform Validate
         run: terraform validate
 
+      # -------------------------------------------------
       # Generate Terraform plan
+      # -------------------------------------------------
       - name: Terraform Plan
         run: terraform plan
 
 
   # =====================================================
   # CD - PRODUCTION DEPLOYMENT
-  # Runs ONLY after merge/push to main
+  #
+  # Runs ONLY when code is pushed to main.
+  #
+  # Normally this happens after a PR is merged.
   # =====================================================
 
   terraform-production:
@@ -85,38 +107,52 @@ jobs:
 
     runs-on: self-hosted
 
+    environment: production
+
     defaults:
       run:
-        working-directory: terraform
-
-    environment: production
+        working-directory: environment/dev
 
     steps:
 
+      # -------------------------------------------------
       # Checkout main branch
+      # -------------------------------------------------
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      # -------------------------------------------------
       # Install Terraform
+      # -------------------------------------------------
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
+      # -------------------------------------------------
       # Initialize Terraform
+      # -------------------------------------------------
       - name: Terraform Init
         run: terraform init
 
-      # Check formatting
+      # -------------------------------------------------
+      # Check Terraform formatting
+      # -------------------------------------------------
       - name: Terraform Format Check
         run: terraform fmt -check -recursive
 
-      # Validate configuration
+      # -------------------------------------------------
+      # Validate Terraform configuration
+      # -------------------------------------------------
       - name: Terraform Validate
         run: terraform validate
 
-      # Generate deployment plan
+      # -------------------------------------------------
+      # Generate Terraform deployment plan
+      # -------------------------------------------------
       - name: Terraform Plan
         run: terraform plan -out=tfplan
 
-      # Deploy infrastructure
+      # -------------------------------------------------
+      # Apply Terraform plan
+      # -------------------------------------------------
       - name: Terraform Apply
         run: terraform apply -auto-approve tfplan
