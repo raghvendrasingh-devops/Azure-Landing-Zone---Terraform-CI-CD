@@ -4,7 +4,7 @@ on:
 
   # =====================================================
   # FEATURE BRANCH PUSH
-  # Runs validation only
+  # Validation only
   # =====================================================
   push:
     branches:
@@ -12,7 +12,7 @@ on:
 
   # =====================================================
   # PULL REQUEST TO MAIN
-  # Runs validation only
+  # Validation only
   # =====================================================
   pull_request:
     branches:
@@ -28,12 +28,7 @@ jobs:
 
   # =====================================================
   # CI - TERRAFORM VALIDATION
-  #
-  # Runs on:
-  # 1. Feature branch push
-  # 2. Pull request targeting main
-  #
-  # Does NOT run terraform apply
+  # Feature push + PR to main
   # =====================================================
 
   terraform-validation:
@@ -53,37 +48,51 @@ jobs:
     steps:
 
       # -------------------------------------------------
-      # Checkout repository
+      # Checkout Repository
       # -------------------------------------------------
       - name: Checkout Repository
         uses: actions/checkout@v4
 
       # -------------------------------------------------
-      # Install Terraform
+      # Setup Terraform
       # -------------------------------------------------
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
       # -------------------------------------------------
-      # Initialize Terraform
+      # Azure Login
+      # -------------------------------------------------
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      # -------------------------------------------------
+      # Verify Azure Authentication
+      # -------------------------------------------------
+      - name: Verify Azure Account
+        run: az account show --output table
+
+      # -------------------------------------------------
+      # Terraform Init
       # -------------------------------------------------
       - name: Terraform Init
         run: terraform init
 
       # -------------------------------------------------
-      # Check Terraform formatting
+      # Terraform Format Check
       # -------------------------------------------------
       - name: Terraform Format Check
         run: terraform fmt -check -recursive
 
       # -------------------------------------------------
-      # Validate Terraform configuration
+      # Terraform Validate
       # -------------------------------------------------
       - name: Terraform Validate
         run: terraform validate
 
       # -------------------------------------------------
-      # Generate Terraform plan
+      # Terraform Plan
       # -------------------------------------------------
       - name: Terraform Plan
         run: terraform plan
@@ -91,10 +100,7 @@ jobs:
 
   # =====================================================
   # CD - PRODUCTION DEPLOYMENT
-  #
-  # Runs ONLY when code is pushed to main.
-  #
-  # Normally this happens after a PR is merged.
+  # Runs only after merge to main
   # =====================================================
 
   terraform-production:
@@ -116,43 +122,57 @@ jobs:
     steps:
 
       # -------------------------------------------------
-      # Checkout main branch
+      # Checkout Main
       # -------------------------------------------------
       - name: Checkout Repository
         uses: actions/checkout@v4
 
       # -------------------------------------------------
-      # Install Terraform
+      # Setup Terraform
       # -------------------------------------------------
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
       # -------------------------------------------------
-      # Initialize Terraform
+      # Azure Login
+      # -------------------------------------------------
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      # -------------------------------------------------
+      # Verify Azure Authentication
+      # -------------------------------------------------
+      - name: Verify Azure Account
+        run: az account show --output table
+
+      # -------------------------------------------------
+      # Terraform Init
       # -------------------------------------------------
       - name: Terraform Init
         run: terraform init
 
       # -------------------------------------------------
-      # Check Terraform formatting
+      # Terraform Format Check
       # -------------------------------------------------
       - name: Terraform Format Check
         run: terraform fmt -check -recursive
 
       # -------------------------------------------------
-      # Validate Terraform configuration
+      # Terraform Validate
       # -------------------------------------------------
       - name: Terraform Validate
         run: terraform validate
 
       # -------------------------------------------------
-      # Generate Terraform deployment plan
+      # Terraform Plan
       # -------------------------------------------------
       - name: Terraform Plan
         run: terraform plan -out=tfplan
 
       # -------------------------------------------------
-      # Apply Terraform plan
+      # Terraform Apply
       # -------------------------------------------------
       - name: Terraform Apply
         run: terraform apply -auto-approve tfplan
